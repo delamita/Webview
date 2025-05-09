@@ -17,11 +17,21 @@ let package = Package(
             name: "Webview",
             targets: ["Webview"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/Flight-School/AnyCodable.git", from: "0.6.0"),
+        .package(path: "../Cedar"),
+        .package(path: "../Canopy"),
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "Webview"),
+            name: "Webview",
+            dependencies: [
+                "AnyCodable",
+                "Cedar",
+                "Canopy",
+            ]),
 
     ]
 )

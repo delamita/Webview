@@ -12,9 +12,13 @@ import WebKit
 @available(iOS 13.0, *)
 public struct WebView: UIViewRepresentable {
     public let state: WebViewState
+    
+    var onScrollContinuous: ((CGPoint) -> Void)? = nil
+    var onScrollEnd: ((_ from: CGPoint, _ to: CGPoint) -> Void)? = nil
+    var onScrollGesture: ((_ from: CGPoint, _ to: CGPoint) -> Void)? = nil
 
     /// 使用已有的 WebViewState 初始化 WebView。
-    public init(state: WebViewState) {
+    public init(_ state: WebViewState) {
         self.state = state
     }
 
@@ -32,6 +36,7 @@ public struct WebView: UIViewRepresentable {
     }
     
     public func makeUIView(context: Context) -> WKWebView {
+        state.webView.scrollView.delegate = context.coordinator
         return state.webView
     }
 
@@ -43,4 +48,77 @@ public struct WebView: UIViewRepresentable {
     public var webView: WKWebView {
         state.webView
     }
+    
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(
+            onScrollContinuous: onScrollContinuous,
+            onScrollEnd: onScrollEnd,
+            onScrollGesture: onScrollGesture
+        )
+    }
+
+    public class Coordinator: NSObject, UIScrollViewDelegate {
+        let onScrollContinuous: ((CGPoint) -> Void)?
+        let onScrollEnd: ((_ from: CGPoint, _ to: CGPoint) -> Void)?
+        let onScrollGesture: ((_ from: CGPoint, _ to: CGPoint) -> Void)?
+        private var dragStartOffset: CGPoint = .zero
+        private var hasCalledEnd = false
+
+        init(
+            onScrollContinuous: ((CGPoint) -> Void)?,
+            onScrollEnd: ((_ from: CGPoint, _ to: CGPoint) -> Void)?,
+            onScrollGesture: ((_ from: CGPoint, _ to: CGPoint) -> Void)?
+        ) {
+            self.onScrollContinuous = onScrollContinuous
+            self.onScrollEnd = onScrollEnd
+            self.onScrollGesture = onScrollGesture
+        }
+
+        public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            onScrollContinuous?(scrollView.contentOffset)
+            onScrollGesture?(dragStartOffset, scrollView.contentOffset)
+        }
+
+        public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            dragStartOffset = scrollView.contentOffset
+            hasCalledEnd = false
+        }
+
+        public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            if !decelerate {
+                triggerScrollEnd(scrollView)
+            }
+        }
+
+        public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            triggerScrollEnd(scrollView)
+        }
+
+        private func triggerScrollEnd(_ scrollView: UIScrollView) {
+            guard !hasCalledEnd else { return }
+            hasCalledEnd = true
+            let endOffset = scrollView.contentOffset
+            onScrollEnd?(dragStartOffset, endOffset)
+        }
+    }
+    
+    
+    public func onScrollContinuous(_ action: @escaping (CGPoint) -> Void) -> WebView {
+        var copy = self
+        copy.onScrollContinuous = action
+        return copy
+    }
+
+    public func onScrollEnd(_ action: @escaping (_ from: CGPoint, _ to: CGPoint) -> Void) -> WebView {
+        var copy = self
+        copy.onScrollEnd = action
+        return copy
+    }
+    
+    public func onScrollGesture(_ action: @escaping (_ from: CGPoint, _ to: CGPoint) -> Void) -> WebView {
+        var copy = self
+        copy.onScrollGesture = action
+        return copy
+    }
+    
 }
