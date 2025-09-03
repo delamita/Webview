@@ -82,7 +82,10 @@ public protocol ElementModel: ElementTemplatable {
 ///
 /// 包含 HTML 基础属性、页面几何信息、内容、路径等，
 /// 可用于插件间传递、AI 目标识别、点击拾取等。
-public struct Element: ElementModel {
+public struct Element: ElementModel, Hashable {
+    
+    public var hashid: UUID = UUID()
+    
     public let tag: String
     public let id: String?
     public let className: String?
